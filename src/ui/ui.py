@@ -83,6 +83,18 @@ class ChatWindow(QMainWindow):
         self.send_button = QPushButton("Send", self)
         main_layout.addWidget(self.send_button)
 
+        self.typing_status = QLineEdit(self)
+        self.typing_status.setText("Typing: ")
+        self.typing_status.setStyleSheet("""
+            QLineEdit {
+                border: none;
+                background: transparent;
+                color: gray;
+            }
+        """)
+        self.typing_status.setReadOnly(True)
+        main_layout.addWidget(self.typing_status)
+
         side_layout = QVBoxLayout()
         side_layout.addWidget(dm_frame)
         side_layout.addWidget(server_frame)

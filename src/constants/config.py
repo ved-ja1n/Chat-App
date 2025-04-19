@@ -13,3 +13,7 @@ USERNAME_ACCEPTED = os.getenv('USERNAME_ACCEPTED', 'Ok')
 
 WHISPER_CMD = os.getenv('WHISPER_CMD', '/w')
 DM_CMD = os.getenv('DM_CMD', '/dm')
+
+IS_TYPING = os.getenv('IS_TYPING', '/USER_TYPING')
+NOT_TYPING = os.getenv('NOT_TYPING', '/USER_NOT_TYPING')
+IS_TYPING_LIST = os.getenv('IS_TYPING_LIST', '/USERS_WHO_TYPING')

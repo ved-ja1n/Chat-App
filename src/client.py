@@ -3,7 +3,7 @@ import threading
 from PyQt5.QtWidgets import QApplication, QInputDialog, QDialog, QVBoxLayout, QTextEdit, QLineEdit, QPushButton
 from PyQt5.QtCore import QTimer
 from constants.config import *
-import sys, os
+import sys, os, keyboard, time
 from ui.ui import ChatWindow
 
 class DMWindow(QDialog):
@@ -54,7 +54,6 @@ class ChatClient(ChatWindow):
         self.connected = False
         self.message_queue = []
         self.dm_windows = {}
-        self.servers = [(server_ip, server_port)]
 
         self.setWindowTitle(f"Chat Client - {server_ip}:{server_port}")
         
@@ -74,6 +73,12 @@ class ChatClient(ChatWindow):
             self.log_debug("Failed to connect to server")
 
         self.setup_connections()
+
+    def check_user_typing(self):
+        if self.message_entry.hasFocus() and self.message_entry.text().strip():
+            self.send_message(f"{IS_TYPING} {self.username}")
+        else:
+            self.send_message(f"{NOT_TYPING} {self.username}")
 
     def setup_connections(self):
         self.send_button.clicked.connect(self.send_from_main)
@@ -108,9 +113,6 @@ class ChatClient(ChatWindow):
         self.server_addr = (ip, port)
         
         if self.connect():
-            # Add to server list if not already there
-            if (ip, port) not in self.servers:
-                self.servers.append((ip, port))
             self.update_server_display()
             self.start_receiving()
             self.log_debug(f"Connected to server {ip}:{port}")
@@ -148,6 +150,9 @@ class ChatClient(ChatWindow):
 
     def start_receiving(self):
         threading.Thread(target=self.receive_messages, daemon=True).start()
+        self.typing_timer = QTimer()
+        self.typing_timer.timeout.connect(self.check_user_typing)
+        self.typing_timer.start(500)
 
     def receive_messages(self):
         while self.connected:
@@ -157,6 +162,13 @@ class ChatClient(ChatWindow):
                     break
                 messages = message.split("\n")
                 for msg in messages:
+                    if msg.startswith(f"{IS_TYPING_LIST}:") or msg.startswith("[/USERS_WHO_TYPING:]:"):
+                        try:
+                            users_typing = msg.split(":", 1)[1]
+                            self.update_user_typing(users_typing)
+                        except Exception as e:
+                            self.log_debug(f"Typing update error: {str(e)}")
+                        continue
                     self.message_queue.append(msg)
             except Exception as e:
                 self.log_debug(f"Receive error: {str(e)}")
@@ -176,6 +188,9 @@ class ChatClient(ChatWindow):
                 self.handle_direct_message(message)
             else:
                 self.display_message(message)
+
+    def update_user_typing(self, users):
+        self.typing_status.setText(f"Typing: {users}")
 
     def update_user_dropdown(self, user_list):
         current = self.user_dropdown.currentText()

@@ -4,6 +4,8 @@ from constants.config import *
 from sql.manageSQL import add_message, load_chat
 import sql.utils as serverUtil 
 
+users_typing = []
+
 class ChatServer:
     def __init__(self, port, host=socket.gethostbyname(socket.gethostname())):
         self.port = port
@@ -36,6 +38,10 @@ class ChatServer:
         user_list = list(self.clients.values())
         self.broadcast(f"{USER_LIST_UPDATE}:{','.join(user_list)}")
 
+    def update_users_typing_list(self):
+        user_typing_list = list(users_typing)
+        self.broadcast(f"{IS_TYPING_LIST}:{', '.join(user_typing_list)}")
+
     def broadcast(self, message):
         self.log_debug(f"Broadcasting: {message}")
         disconnected_clients = []
@@ -54,8 +60,8 @@ class ChatServer:
         if disconnected_clients:
             self.update_user_list()
 
-        add_message(message)
-        
+        if not message.startswith((USER_LIST_UPDATE, IS_TYPING_LIST, f"[{IS_TYPING_LIST}:]")):
+            add_message(message)
 
     def handle_client(self, conn, addr):
         username = self.register_username(conn)
@@ -115,6 +121,16 @@ class ChatServer:
             self.handle_whisper(conn, sender, words[1], ' '.join(words[2:]))
         elif len(words) >= 3 and words[0] == DM_CMD:
             self.handle_direct_message(conn, sender, words[1], ' '.join(words[2:]))
+        elif len(words) >= 2 and words[0] == IS_TYPING:
+            user = ' '.join(words[1:])
+            if user not in users_typing:
+                users_typing.append(user)
+            self.update_users_typing_list()
+        elif len(words) >= 2 and words[0] == NOT_TYPING:
+            user = ' '.join(words[1:])
+            if user in users_typing:
+                users_typing.remove(user)
+            self.update_users_typing_list()
         else:
             self.broadcast(f"[{sender}]: {message}")
 
